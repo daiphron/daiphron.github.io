@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0">
+<title>Picker</title>
+<style>
+body {
+    background:#FFF;
+    color:#000;
+    font-family:verdana, sans-serif;
+    font-size:10pt;
+    margin:0;
+    padding:10px;
+}
+
+a:link, a:visited {
+    color:#008;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+a:active, a:hover {
+    color:#ACF;
+}
+
+.info {
+    font-weight:bold;
+}
+
+button {
+    font-family:inherit;
+    cursor:pointer;
+    border:0;
+    border-radius:3px;
+    padding:0.3em 0.5em;
+    background:#CCC;
+    color:#000;
+}
+
+button:hover {
+    background:#DDD;
+}
+
+button.disabled {
+    background:#DDD;
+    color:#888;
+    cursor:not-allowed;
+}
+
+button.disabled:hover {
+    background:#DDD;
+}
+
+#container {
+    position:relative;
+    margin-left:-10px;
+    margin-right:-10px;
+    padding:10px;
+    overflow:hidden;
+}
+
+@media (min-width:1024px) {
+    /* Put the found favorites beside the picking div when the window is sufficiently large */
+    #picking {
+        float:left;
+        width:636px;
+    }
+
+    #secondary {
+        margin-left:646px;
+    }
+}
+
+@media (min-width:1300px) {
+    /* Once we get to the point where 636px is less than half of the width of the screen, make the picking div just take up half */
+    #picking {
+        width:50%;
+    }
+
+    #secondary {
+        margin-left:51%;
+    }
+}
+
+#pick {
+    background:#58F;
+    color:#FFF;
+    font-size:larger;
+    font-weight:bold;
+    width:6em;
+    border-radius:5px;
+    margin-right:10px;
+}
+
+#pick.disabled {
+    background:#ACF;
+}
+
+#pick:hover {
+    background:#ACF;
+}
+
+.item-list {
+    padding:0;
+    list-style-type:none;
+    line-height:100px;
+}
+
+.item-list li {
+    margin:0;
+    display:inline-block;
+    height:200px;
+    width:200px;
+    line-height:100px;
+    border:3px solid transparent;
+    text-align:center;
+    position:relative;
+    vertical-align:top;
+    overflow:hidden;
+    border-radius:100%;
+    background:#F7F7F7;
+    color:#000;
+}
+
+.item-list li img {
+    vertical-align:middle;
+    max-height:100%;
+    max-width:100%;
+}
+
+.item-list li span {
+    display:inline-block;
+    vertical-align:middle;
+    line-height:1.2;
+}
+
+@media (max-width:636px) {
+    .item-list {
+        line-height:75px;
+    }
+
+    .item-list li {
+        line-height:75px;
+        height:75px;
+        width:75px;
+    }
+}
+
+@media (max-width:423px) {
+    .item-list {
+        line-height:50px;
+    }
+
+    .item-list li {
+        line-height:50px;
+        height:50px;
+        width:50px;
+    }
+}
+
+#evaluating li {
+    cursor:pointer;
+}
+
+#favorites li {
+    cursor:move;
+}
+
+.item-list li:hover {
+    background:#CDF;
+}
+
+.item-list.sorting li:hover {
+    background:#F7F7F7;
+}
+
+#evaluating li.selected {
+    border:3px solid #7AC;
+}
+
+#evaluating, #buttons {
+    text-align:center;
+    margin:auto;
+}
+
+#evaluating li.notice {
+    width:auto;
+    height:auto;
+    max-width:260px;
+    margin:auto;
+    background:#F7F7F7;
+    border-radius:10px;
+    padding:30px 30px;
+    color:#000;
+    text-align:center;
+    line-height:1.4;
+    cursor:auto;
+    font-size:10pt;
+}
+
+#buttons {
+    margin-top:30px;
+    position:relative;
+    z-index:3;
+}
+</style>
+</head>
+<body>
+<h1>NATIONAL HOTTIE LEAGUE</h1>
+
+<p>like hockey? have a strongly held belief about who the hottest active NHL player is? 
+select every player you think is hot to create a pool of favourites, and then rank your choices to get a Totally Scientific power ranking.</p>
+
+<div id="container">
+
+<div id="picking">
+<ul id="evaluating" class="item-list">
+</ul>
+
+<p id="buttons"><button id="pick">Pick</button> <button id="pass">Pass</button> <button id="undo">Undo</button> <button id="redo">Redo</button></p>
+</div>
+
+<div id="secondary">
+<h2>Found favorites</h2>
+
+<ol id="favorites" class="item-list">
+</ol>
+</div>
+</div>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="picker.js"></script>
+<script src="picker-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.7.0/Sortable.min.js"></script>
+<script>
+'use strict';
+
+var items = [
+  {id: '1', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475200@2x.jpg'},
+	{id: 'Sheldon Rempal', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480776@2x.jpg'},
+	{id: 'Gerry Mayhew', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479933@2x.jpg'},
+	{id: 'Jani Hakanpaa', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475825.jpg'},
+	{id: 'Brendan Lemieux', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477962@2x.jpg'}, 
+	{id: 'Rasmus Sandin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480873@2x.jpg'},
+	{id: 'Jordan Oesterle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477851@2x.jpg'}, 
+	{id: 'Nicolas Hague', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479980@2x.jpg'},
+	{id: 'Dysin Mayo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478062.jpg'},
+	{id: 'Jan Rutta', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480172@2x.jpg'},
+	{id: 'Tony DeAngelo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477950@2x.jpg'},
+	{id: 'Connor Brown', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477015@2x.jpg'},
+	{id: 'Ryan Suter', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470600.jpg'},
+	{id: 'Brenden Dillon', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475455@2x.jpg'},
+	{id: 'Craig Smith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475225@2x.jpg'},
+	{id: 'Cam Fowler', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475764@2x.jpg'},
+	{id: 'Kyle Capobianco', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478476.jpg'},
+	{id: 'Boone Jenner', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476432@2x.jpg'},   
+	{id: 'Victor Hedman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475167@2x.jpg'},   
+	{id: 'Nicolas Deslauriers', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475235@2x.jpg'}, 
+	{id: 'Adam Gaudette', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478874@2x.jpg'},
+	{id: 'Adam Fox', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479323@2x.jpg'},
+	{id: 'Olli Maata', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476874@2x.jpg'},
+	{id: 'Jakub Vrana', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477944@2x.jpg'},
+	{id: 'Sean Monahan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477497@2x.jpg'},  
+	{id: 'Sam Bennett', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477935@2x.jpg'},   
+	{id: 'Alex Debrincat', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479337.jpg'},   
+	{id: 'Jack Hughes', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481559@2x.jpg'},   
+	{id: 'Kevin Connauton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475246@2x.jpg'},   
+	{id: 'Alex Wennberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477505@2x.jpg'}, 
+	{id: 'Darcy Kuemper', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475311.jpg'},
+	{id: 'Kyle Okposo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473449@2x.jpg'},
+	{id: 'Jaccob Slavin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476958@2x.jpg'},  
+	{id: 'Brady Tkachuk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480801@2x.jpg'},    
+	{id: 'Josh Gibson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476434@2x.jpg'},  
+	{id: 'Cody Ceci', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476879@2x.jpg'},   
+	{id: 'Eric Comrie', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477480@2x.jpg'},   
+	{id: 'Michael Rasmussen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479992@2x.jpg'},  
+	{id: 'Kale Clague', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479348@2x.jpg'},  
+	{id: 'Cale Makar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480069.jpg'},
+	{id: 'Mattias Ekholm', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475218@2x.jpg'},   
+	{id: 'Milan Lucic', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473473@2x.jpg'},   
+	{id: 'Tyson Jost', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479370.jpg'},
+	{id: 'Evgeni Malkin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471215@2x.jpg'},
+	{id: 'Logan Couture', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474053@2x.jpg'}, 
+	{id: 'Thatcher Demko', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477967@2x.jpg'},   
+	{id: 'Marc Staal', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471686@2x.jpg'},  
+	{id: 'Adam Brooks', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478996@2x.jpg'}, 
+	{id: 'Caleb Jones', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478452.jpg'},
+	{id: 'Karel Vejmelka', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478872.jpg'},
+	{id: 'Andy Greene', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8472382@2x.jpg'},    
+	{id: 'Brett Kulak', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476967@2x.jpg'},  
+	{id: 'Josh Norris', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480064@2x.jpg'},    
+	{id: 'Rasmus Ristolainen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477499@2x.jpg'},    
+	{id: 'Christian Dvorak', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477989@2x.jpg'},   
+	{id: 'Anthony Stolarz', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476932@2x.jpg'},   
+	{id: 'Matt Roy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478911@2x.jpg'},    
+	{id: 'Cedric Paquette', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476975@2x.jpg'},    
+	{id: 'Jack Roslovic', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478458@2x.jpg'},   
+	{id: 'Nico Sturm', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481477.jpg'},
+	{id: 'Justin Faulk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475753@2x.jpg'},    
+	{id: 'Dillon Dube', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479346@2x.jpg'},    
+	{id: 'Morgan Barron', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480289@2x.jpg'},    
+	{id: 'Matt Irwin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475625@2x.jpg'},    
+	{id: 'Eetu Luostarinen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480185@2x.jpg'},   
+	{id: 'Andreas Johnsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477341@2x.jpg'},   
+	{id: 'Max Pacioretty', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474157@2x.jpg'},   
+	{id: 'Yegor Chinakhov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482475@2x.jpg'},   
+	{id: 'Zack Kassian', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475178@2x.jpg'},   
+	{id: 'J-F Berube', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475234@2x.jpg'},    
+	{id: 'Emil Bemstrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480205@2x.jpg'},    
+	{id: 'Kurtis MacDermid', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477073.jpg'},
+	{id: 'Ryan Strome', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476458@2x.jpg'},    
+	{id: 'Drew Doughty', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474563@2x.jpg'},    
+	{id: 'David Perron', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474102@2x.jpg'},    
+	{id: 'Madison Bowey', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477474@2x.jpg'},    
+	{id: 'Josh Morrissey', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477504@2x.jpg'},    
+	{id: 'Keegan Kolesar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478434@2x.jpg'},    
+	{id: 'Torey Krug', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476792@2x.jpg'},    
+	{id: 'Travis Hamonic', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474612@2x.jpg'},    
+	{id: 'Patrice Bergeron', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470638@2x.jpg'},    
+	{id: 'Daniil Tarasov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480193@2x.jpg'},    
+	{id: 'Dante Fabbro', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479371@2x.jpg'},   
+	{id: 'Nicolas Roy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478462@2x.jpg'},    
+	{id: 'Filip Hallander', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480842@2x.jpg'},    
+	{id: 'Philip Broberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476399@2x.jpg'},    
+	{id: 'Petr Mrazek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475852@2x.jpg'},    
+	{id: 'Lias Andersson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480072@2x.jpg'},    
+	{id: 'Johan Larsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475728.jpg'},
+	{id: 'Taylor Raddysh', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479390@2x.jpg'},    
+	{id: 'Joe Veleno', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480813@2x.jpg'},   
+	{id: 'Zach Sawchenko', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479313@2x.jpg'},    
+	{id: 'Ryan Johansen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475793@2x.jpg'},    
+	{id: 'Jordan Binnington', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476412@2x.jpg'},    
+	{id: 'Oliver Ekman-Larsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475171@2x.jpg'},    
+	{id: 'Jake Walman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478013@2x.jpg'},
+	{id: 'Alex Goligoski', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471274.jpg'},   
+	{id: 'Nick Foligno', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473422@2x.jpg'},   
+	{id: 'Yegor Sharangovich', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481068@2x.jpg'},    
+	{id: 'Cam Atkinson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474715@2x.jpg'},   
+	{id: 'Troy Stecher', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479442@2x.jpg'},   
+	{id: 'Mac Hollowell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480439@2x.jpg'},    
+	{id: 'Moritz Seider', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481542@2x.jpg'},   
+	{id: 'Rasmus Andersson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478397@2x.jpg'},    
+	{id: 'Colton Parayko', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476892@2x.jpg'},   
+	{id: 'Jonathan Huberdeau', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476456@2x.jpg'},    
+	{id: 'Mathieu Joseph', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478472@2x.jpg'},    
+	{id: 'Pavel Francouz', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480925.jpg'},
+	{id: 'Brock Boeser', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478444@2x.jpg'},    
+	{id: 'Andre Burakovsky', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477444.jpg'},
+	{id: 'David Savard', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475233@2x.jpg'},    
+	{id: 'John Hayden', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477401@2x.jpg'},    
+	{id: 'Alex Stalock', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471774@2x.jpg'},    
+	{id: 'Dan Vladar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478435@2x.jpg'},   
+	{id: 'Travis Boyd', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476329.jpg'},
+	{id: 'Brett Howden', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479353@2x.jpg'},    
+	{id: 'Tyler Motte', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477353@2x.jpg'},    
+	{id: 'Austin Watson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475766@2x.jpg'},    
+	{id: 'David Pastrnak', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477956@2x.jpg'},    
+	{id: 'Eeli Tolvanen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480009@2x.jpg'},    
+	{id: 'Blake Lizotte', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481481@2x.jpg'},    
+	{id: 'Brandon Montour', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477986@2x.jpg'},    
+	{id: 'John Carlson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474590@2x.jpg'},    
+	{id: 'Maxim Mamin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479553@2x.jpg'},    
+	{id: 'K\'Andre Miller', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480817@2x.jpg'},  
+	{id: 'Radim Simek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480160@2x.jpg'},    
+	{id: 'Joonas Donskoi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475820@2x.jpg'},    
+	{id: 'Elias Pettersson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480012@2x.jpg'},    
+	{id: 'Casey Fitzgerald', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479578@2x.jpg'},    
+	{id: 'Jacob Markstrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474593@2x.jpg'},    
+	{id: 'Tyler Myers', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474574@2x.jpg'},    
+	{id: 'Ryan Graves', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477435@2x.jpg'},    
+	{id: 'Brady Skjei', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476869@2x.jpg'},   
+	{id: 'Evgeny Kuznetsov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475744@2x.jpg'},    
+	{id: 'Shayne Gostisbehere', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476906.jpg'},
+	{id: 'Tyler Johnson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474870.jpg'},
+	{id: 'Artturi Lehkonen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477476@2x.jpg'},    
+	{id: 'Ryan Carpenter', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477846.jpg'},
+	{id: 'Ross Colton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479525@2x.jpg'},    
+	{id: 'Jordie Benn', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474818.jpg'},
+	{id: 'Alex Ovechkin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471214@2x.jpg'},    
+	{id: 'Jason Dickinson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477450@2x.jpg'},    
+	{id: 'Radko Gudas', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475462@2x.jpg'},    
+	{id: 'Jake Allen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474596@2x.jpg'},    
+	{id: 'Evgenii Dadonov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474149@2x.jpg'},    
+	{id: 'Jeremy Swayman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480280@2x.jpg'},    
+	{id: 'Jeff Carter', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470604@2x.jpg'},    
+	{id: 'Chandler Stephenson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476905@2x.jpg'},    
+	{id: 'Matt Benning', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476988@2x.jpg'},    
+	{id: 'Martin Jones', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474889@2x.jpg'},    
+	{id: 'Mike Matheson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476875@2x.jpg'},    
+	{id: 'Richard Rakell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476483@2x.jpg'},    
+	{id: 'Patrick Brown', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477887@2x.jpg'},    
+	{id: 'Carl Hagelin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474176@2x.jpg'},    
+	{id: 'Vince Dunn', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478407@2x.jpg'},    
+	{id: 'Rasmus Dahlin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480839@2x.jpg'},    
+	{id: 'Adam Larsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476457@2x.jpg'},   
+	{id: 'Nick Schmaltz', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477951.jpg'},
+	{id: 'Paul Stastny', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471669@2x.jpg'},    
+	{id: 'Robin Lehner', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475215@2x.jpg'},    
+	{id: 'Tyler Pitlick', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475752@2x.jpg'},    
+	{id: 'Nolan Patrick', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479974@2x.jpg'},    
+	{id: 'Dylan Larkin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477946@2x.jpg'},   
+	{id: 'Shea Weber', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470642@2x.jpg'},    
+	{id: 'Chris Kreider', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475184@2x.jpg'},    
+	{id: 'Leon Draisaitl', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477934@2x.jpg'},    
+	{id: 'Timothy Liljegren', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480043@2x.jpg'},    
+	{id: 'Dylan Samberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480049@2x.jpg'},    
+	{id: 'Luke Schenn', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474568@2x.jpg'},    
+	{id: 'Gustav Lindstrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480184@2x.jpg'},      
+	{id: 'Erik Cernak', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478416@2x.jpg'},    
+	{id: 'Jonathan Toews', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473604.jpg'},
+	{id: 'Michael McCarron', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477446@2x.jpg'},   
+	{id: 'Ryan O\'Reilly', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475158@2x.jpg'},    
+	{id: 'Max Willman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478051@2x.jpg'},   
+	{id: 'Brad Hunt', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476779@2x.jpg'},    
+	{id: 'Alexis Lafrenière', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482109@2x.jpg'},    
+	{id: 'Jean-Gabriel Pageau', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476419@2x.jpg'},    
+	{id: 'Brayden McNabb', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475188@2x.jpg'},    
+	{id: 'Radek Faksa', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476889.jpg'},
+	{id: 'Aleksander Barkov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477493@2x.jpg'},   
+	{id: 'TJ Brodie', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474673@2x.jpg'},   
+	{id: 'Gustav Forsling', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478055@2x.jpg'},   
+	{id: 'Colton Sceviour', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474098@2x.jpg'},    
+	{id: 'Steven Stamkos', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474564@2x.jpg'},    
+	{id: 'William Carrier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477478@2x.jpg'},    
+	{id: 'Riley Stillman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479388.jpg'},
+	{id: 'Kyle Turris', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474068@2x.jpg'},    
+	{id: 'Jakub Voracek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474161@2x.jpg'},    
+	{id: 'Kevin Labanc', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478099@2x.jpg'},    
+	{id: 'Vincent Trocheck', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476389@2x.jpg'},   
+	{id: 'Ryan McDonagh', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474151@2x.jpg'},    
+	{id: 'Liam O\'Brien', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477070.jpg'},
+	{id: 'Jason Robertson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480027.jpg'},
+	{id: 'William Karlsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476448@2x.jpg'},    
+	{id: 'Jonathan Marchessault', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476539@2x.jpg'},   
+	{id: 'Brent Burns', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470613@2x.jpg'},    
+	{id: 'Carter Hart', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479394@2x.jpg'},    
+	{id: 'Seth Jones', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477495.jpg'},
+	{id: 'Michael McLeod', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479415@2x.jpg'},    
+	{id: 'Jaden Schwartz', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475768@2x.jpg'},    
+	{id: 'Ryan Lindgren', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479324@2x.jpg'},    
+	{id: 'Wayne Simmonds', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474190@2x.jpg'},   
+	{id: 'Kevin Lankinen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480947.jpg'},
+	{id: 'Kevin Shattenkirk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474031@2x.jpg'},  
+	{id: 'Marcus Johansson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475149@2x.jpg'},    
+	{id: 'Alexandre Carrier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478851@2x.jpg'},    
+	{id: 'John Klingberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475906.jpg'},
+	{id: 'Josh Manson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476312@2x.jpg'},    
+	{id: 'Mitchell Marner', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478483@2x.jpg'},    
+	{id: 'Chris Driedger', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476904@2x.jpg'},    
+	{id: 'Casey Cizikas', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475231@2x.jpg'},    
+	{id: 'Pierre Engvall', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478115@2x.jpg'},    
+	{id: 'Brad Richardson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470755@2x.jpg'},   
+	{id: 'J.T. Miller', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476468@2x.jpg'},    
+	{id: 'Mike Smith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8469608@2x.jpg'},    
+	{id: 'Ilya Sorokin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478009@2x.jpg'},   
+	{id: 'Kasper Bjorkqvist', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479512@2x.jpg'},    
+	{id: 'Jasper Weatherby', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481061@2x.jpg'},        
+	{id: 'Curtis Lazar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477508@2x.jpg'},
+	{id: 'Tyler Ennis', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474589@2x.jpg'},    
+	{id: 'Will Butcher', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477355@2x.jpg'},    
+	{id: 'Carter Verhaeghe', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477409@2x.jpg'},   
+	{id: 'Igor Shesterkin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478048@2x.jpg'},    
+	{id: 'Nikita Kucherov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476453@2x.jpg'},    
+	{id: 'Kaapo Kakko', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481554@2x.jpg'},    
+	{id: 'Jesper Bratt', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479407@2x.jpg'},    
+	{id: 'Jack Eichel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478403@2x.jpg'},    
+	{id: 'Derek Ryan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478585@2x.jpg'},    
+	{id: 'Zach Sanford', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477482@2x.jpg'},    
+	{id: 'Carey Price', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471679@2x.jpg'},    
+	{id: 'John Moore', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475186@2x.jpg'},    
+	{id: 'Joel Farabee', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480797@2x.jpg'},    
+	{id: 'Mark Pysyk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475796@2x.jpg'},    
+	{id: 'Brett Ritchie', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476439@2x.jpg'},    
+	{id: 'Mikko Koskinen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475156@2x.jpg'},
+	{id: 'Mikey Anderson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479998@2x.jpg'},  
+	{id: 'Alec Martinez', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474166@2x.jpg'},    
+	{id: 'David Kampf', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480144@2x.jpg'},    
+	{id: 'Laurent Brossoit', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476316@2x.jpg'},    
+	{id: 'Trevor Zegras', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481533@2x.jpg'},    
+	{id: 'Joel Eriksson Ek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478493.jpg'},
+	{id: 'Cal Clutterbuck', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473504@2x.jpg'},    
+	{id: 'Jonas Johansson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477992@2x.jpg'},    
+	{id: 'Philip Tomasino', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481577@2x.jpg'},    
+	{id: 'Jesper Boqvist', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480003@2x.jpg'},   
+	{id: 'Sean Durzi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480434@2x.jpg'},    
+	{id: 'Logan Brown', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479366@2x.jpg'},    
+	{id: 'Cole Caufield', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481540@2x.jpg'},    
+	{id: 'Brian Boyle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470619@2x.jpg'},   
+	{id: 'Laurent Dauphin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477460@2x.jpg'},    
+	{id: 'Nathan MacKinnon', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477492.jpg'},
+	{id: 'Blake Coleman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476399@2x.jpg'},    
+	{id: 'Alexander Barabanov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482222@2x.jpg'},    
+	{id: 'Jordan Martinook', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476921@2x.jpg'},    
+	{id: 'Bryan Little', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473412@2x.jpg'},    
+	{id: 'Zach Whitecloud', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480727@2x.jpg'},    
+	{id: 'Kristian Vesalainen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480005@2x.jpg'},    
+	{id: 'Sean Walker', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480336@2x.jpg'},    
+	{id: 'Jonathan Drouin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477494@2x.jpg'},   
+	{id: 'Jordan Gross', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480913.jpg'},
+	{id: 'Nate Schmidt', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477220@2x.jpg'},    
+	{id: 'Teddy Blueger', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476927@2x.jpg'},   
+	{id: 'Bowen Byram', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481524.jpg'},
+	{id: 'Dylan Strome', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478440.jpg'},
+	{id: 'Patrik Laine', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479339@2x.jpg'},    
+	{id: 'Trevor Van Riemsdyk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477845@2x.jpg'},   
+	{id: 'Ville Husso', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478024@2x.jpg'},   
+	{id: 'Matt Dumba', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476856.jpg'},
+	{id: 'Loui Eriksson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470626.jpg'},
+	{id: 'Erik Gudbranson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475790@2x.jpg'},    
+	{id: 'Andrej Sustr', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477205@2x.jpg'},    
+	{id: 'Cole Sillinger', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482705@2x.jpg'},    
+	{id: 'Marc-Andre Fleury', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470594.jpg'},
+	{id: 'Andrew Cogliano', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471699@2x.jpg'},    
+	{id: 'Ryan Lomberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479066@2x.jpg'},    
+	{id: 'Philipp Grubauer', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475831@2x.jpg'},    
+	{id: 'Dominic Toninato', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476952@2x.jpg'},    
+	{id: 'Morgan Geekie', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479987@2x.jpg'},    
+	{id: 'Rudolph Balcers', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478870@2x.jpg'},    
+	{id: 'Anton Stralman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471873.jpg'},
+	{id: 'Jason Zucker', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475722@2x.jpg'},    
+	{id: 'Sergei Bobrovsky', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475683@2x.jpg'},    
+	{id: 'Matt Martin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474709@2x.jpg'},    
+	{id: 'Luke Kunin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479316@2x.jpg'},   
+	{id: 'Jacob Bryson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480196@2x.jpg'},    
+	{id: 'Dustin Brown', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470606@2x.jpg'},    
+	{id: 'Evander Kane', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475169@2x.jpg'},    
+	{id: 'Olli Juolevi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479355@2x.jpg'},    
+	{id: 'Esa Lindell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476902.jpg'},
+	{id: 'Logan O\'Connor', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481186.jpg'},
+	{id: 'Dillon Heatherington', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477471@2x.jpg'},   
+	{id: 'Jordan Eberle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474586@2x.jpg'},    
+	{id: 'T.J. Oshie', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471698@2x.jpg'},    
+	{id: 'Mackenzie Blackwood', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478406@2x.jpg'},    
+	{id: 'Jay Beagle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474291.jpg'},
+	{id: 'James Van Riemsdyk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474037@2x.jpg'},    
+	{id: 'Charles Hudon', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476948@2x.jpg'},   
+	{id: 'William Lagesson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478021@2x.jpg'},    
+	{id: 'Tomas Hertl', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476881@2x.jpg'},    
+	{id: 'Nikolaj Ehlers', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477940@2x.jpg'},  
+	{id: 'Gustav Nyquist', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474679@2x.jpg'},    
+	{id: 'Jacob Moverare', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479421@2x.jpg'},    
+	{id: 'Mackenzie Entwistle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480025.jpg'},
+	{id: 'Semyon Varlamov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473575@2x.jpg'},    
+	{id: 'Morgan Rielly', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476853@2x.jpg'},    
+	{id: 'Dougie Hamilton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476462@2x.jpg'},    
+	{id: 'Danton Heinen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478046@2x.jpg'},    
+	{id: 'Noel Acciari', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478569@2x.jpg'},    
+	{id: 'Lucas Raymond', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482078@2x.jpg'},    
+	{id: 'Nathan Beaulieu', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476470@2x.jpg'},    
+	{id: 'Philipp Kurashev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480798.jpg'},
+	{id: 'Zdeno Chara', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8465009@2x.jpg'},    
+	{id: 'Josh Anderson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476981@2x.jpg'},    
+	{id: 'Jon Gillies', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476903@2x.jpg'},    
+	{id: 'James Reimer', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473503@2x.jpg'},    
+	{id: 'Dawson Mercer', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482110@2x.jpg'},    
+	{id: 'Mason Shaw', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479972.jpg'},
+	{id: 'Nicklas Backstrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473563@2x.jpg'},    
+	{id: 'Lucas Carlsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479523@2x.jpg'},    
+	{id: 'Ivan Barbashev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477964@2x.jpg'},    
+	{id: 'Jakob Chychrun', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479345.jpg'},
+	{id: 'Ty Smith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480883@2x.jpg'},    
+	{id: 'Steven Lorentz', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478904@2x.jpg'},    
+	{id: 'Janne Kuokkanen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479511@2x.jpg'},    
+	{id: 'Alex Newhook', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481618.jpg'},
+	{id: 'Mikael Backlund', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474150@2x.jpg'},    
+	{id: 'Joe Thornton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8466138@2x.jpg'},    
+	{id: 'Nick Suzuki', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480018@2x.jpg'},    
+	{id: 'Mark Jankowski', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476873@2x.jpg'},    
+	{id: 'Nick Jensen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475324@2x.jpg'},   
+	{id: 'Justin Danforth', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479941@2x.jpg'},    
+	{id: 'Roope Hintz', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478449.jpg'},
+	{id: 'Jesse Puljujarvi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479344@2x.jpg'},
+	{id: 'Phil Kessel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473548.jpg'},
+	{id: 'Pierre-Edouard Bellemare', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477930@2x.jpg'}, 
+	{id: 'Jonathan Quick', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471734@2x.jpg'},
+	{id: 'Artem Zub', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482245@2x.jpg'},    
+	{id: 'Jesperi Kotkaniemi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480829@2x.jpg'},    
+	{id: 'Jordan Greenway', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478413.jpg'},
+	{id: 'Oliver Bjorkstrand', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477416@2x.jpg'},    
+	{id: 'Ryan McLeod', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480802@2x.jpg'},   
+	{id: 'Anthony Beauvillier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478463@2x.jpg'},    
+	{id: 'Urho Vaakanainen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480001@2x.jpg'},    
+	{id: 'Rem Pitlick', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479514@2x.jpg'},    
+	{id: 'Noah Hanifin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478396@2x.jpg'},    
+	{id: 'Kirby Dach', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481523.jpg'},
+	{id: 'Gabriel Landeskog', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476455.jpg'},
+	{id: 'Nico Daws', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482076@2x.jpg'},    
+	{id: 'Sebastian Aho (b.1997)', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478427@2x.jpg'},
+	{id: 'Filip Hronek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479425@2x.jpg'},    
+	{id: 'Nick Cousins', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476393@2x.jpg'},   
+	{id: 'Tristan Jarry', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477465@2x.jpg'},    
+	{id: 'Jack Ahcan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482072@2x.jpg'},    
+	{id: 'Parker Kelly', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480448@2x.jpg'},    
+	{id: 'Derek Stepan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474613@2x.jpg'},    
+	{id: 'Filip Zadina', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480821@2x.jpg'},   
+	{id: 'Joel Kiviranta', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481641.jpg'},
+	{id: 'Thomas Harley', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481581.jpg'},
+	{id: 'Jeffrey Viel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479705@2x.jpg'},    
+	{id: 'Colin Miller', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476525@2x.jpg'},    
+	{id: 'Gabriel Carlsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478506@2x.jpg'},    
+	{id: 'Cal Petersen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477361@2x.jpg'},    
+	{id: 'Markus Niemelainen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479338@2x.jpg'},    
+	{id: 'Erik Haula', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475287@2x.jpg'},    
+	{id: 'Frederik Andersen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475883@2x.jpg'},    
+	{id: 'Robert Bortuzzo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474145@2x.jpg'},    
+	{id: 'Corey Perry', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470621@2x.jpg'},    
+	{id: 'Auston Matthews', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479318@2x.jpg'},    
+	{id: 'J.T. Compher', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477456.jpg'},
+	{id: 'Will Borgen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478840@2x.jpg'},    
+	{id: 'Tyler Bozak', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475098@2x.jpg'},    
+	{id: 'Brandon Hagel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479542.jpg'},
+	{id: 'Jonah Gadjovich', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479981@2x.jpg'},    
+	{id: 'Connor McDavid', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478402@2x.jpg'},    
+	{id: 'Robert Thomas', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480023@2x.jpg'},    
+	{id: 'Jesper Froden', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482834@2x.jpg'},    
+	{id: 'Derick Brassard', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473544@2x.jpg'},   
+	{id: 'Sebastian Aho (b.1996)', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480222@2x.jpg'},    
+	{id: 'Martin Fehervary', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480796@2x.jpg'},    
+	{id: 'Sam Gagner', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474040@2x.jpg '},    
+	{id: 'Alexandre Texier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480074@2x.jpg'},    
+	{id: 'Jonathan Bernier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473541@2x.jpg'},    
+	{id: 'Kevin Rooney', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479291@2x.jpg'},    
+	{id: 'Mark Stone', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475913@2x.jpg'},    
+	{id: 'Blake Wheeler', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471218@2x.jpg'},    
+	{id: 'Connor Hellebuyck', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476945@2x.jpg'},    
+	{id: 'Andrei Svechnikov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480830@2x.jpg'},    
+	{id: 'Jamie Benn', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473994.jpg'},
+	{id: 'Jake Bean', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479402@2x.jpg'},    
+	{id: 'Chad Ruhwedel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477244@2x.jpg'},    
+	{id: 'Nick Bjugstad', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475760.jpg'},
+	{id: 'Miro Heiskanen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480036.jpg'},
+	{id: 'Dylan Coghlan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479639@2x.jpg'},    
+	{id: 'Christopher Tanev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475690@2x.jpg'},    
+	{id: 'Victor Mete', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479376@2x.jpg'},    
+	{id: 'Nicolas Aube-Kubel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477979.jpg'},
+	{id: 'Sidney Crosby', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471675@2x.jpg'},    
+	{id: 'Jacob MacDonald', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479439.jpg'},
+	{id: 'Ryan Dzingel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476288@2x.jpg'},    
+	{id: 'Jonny Brodzinski', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477380@2x.jpg'},    
+	{id: 'Devon Toews', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478038.jpg'},
+	{id: 'Pius Suter', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480459@2x.jpg'},    
+	{id: 'Matthew Tkachuk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479314@2x.jpg'},   
+	{id: 'Alex Killorn', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473986@2x.jpg'},    
+	{id: 'Tage Thompson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475784@2x.jpg'},    
+	{id: 'Pierre-Luc Dubois', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479400@2x.jpg'},    
+	{id: 'Colton White', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478841@2x.jpg'},   
+	{id: 'Ryan Murray', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476850.jpg'},
+	{id: 'Jakub Zboril', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478415@2x.jpg'},    
+	{id: 'Scott Mayfield', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476429@2x.jpg'},    
+	{id: 'Conor Garland', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478856@2x.jpg'},    
+	{id: 'Teuvo Teravainen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476882@2x.jpg'},    
+	{id: 'Andrei Vasilevskiy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476883@2x.jpg'},    
+	{id: 'Tyler Toffoli', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475726@2x.jpg'},    
+	{id: 'Jalen Chatfield', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478970@2x.jpg'},   
+	{id: 'Sam Steel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479351@2x.jpg'},    
+	{id: 'Tanner Pearson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476871@2x.jpg'},    
+	{id: 'Anton Forsberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476341@2x.jpg'},    
+	{id: 'David Rittich', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479496@2x.jpg'},    
+	{id: 'Jared McCann', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477955@2x.jpg'},    
+	{id: 'Josh Bailey', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474573@2x.jpg'},    
+	{id: 'Travis Sanheim', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477948@2x.jpg'},    
+	{id: 'Danny DeKeyser', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477215@2x.jpg'},    
+	{id: 'Nate Thompson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470775@2x.jpg'},    
+	{id: 'Ryan Pulock', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477506@2x.jpg'},    
+	{id: 'Jujhar Khaira', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476915.jpg'},
+	{id: 'Martin Necas', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480039@2x.jpg'},    
+	{id: 'Lars Eller', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474189@2x.jpg'},    
+	{id: 'Zemgus Girgensons', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476878@2x.jpg'},    
+	{id: 'Nelson Nogier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478031@2x.jpg'},   
+	{id: 'Tyler Seguin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475794.jpg'},
+	{id: 'Filip Forsberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476887@2x.jpg'},    
+	{id: 'Riley Tufte', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479362.jpg'},
+	{id: 'Seth Jarvis', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482093@2x.jpg'},    
+	{id: 'Brandon Carlo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478443@2x.jpg'},    
+	{id: 'Trevor Lewis',  image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473453@2x.jpg'},    
+	{id: 'Miles Wood', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477425@2x.jpg'},    
+	{id: 'Jon Merrill', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475750.jpg'},
+	{id: 'Alex Pietrangelo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474565@2x.jpg'},    
+	{id: 'Ryan Getzlaf', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470612@2x.jpg'},    
+	{id: 'Troy Terry', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478873@2x.jpg'},   
+	{id: 'CJ Suess', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478058@2x.jpg'},    
+	{id: 'Keith Yandle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471735@2x.jpg'},    
+	{id: 'Michael Stone', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474628@2x.jpg'},    
+	{id: 'Andrew Copp', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477429@2x.jpg'},    
+	{id: 'Anders Bjork', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478075@2x.jpg'},    
+	{id: 'Kaapo Kahkonen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478039.jpg'},
+	{id: 'Riley Nash', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474062.jpg'},
+	{id: 'Brian Dumoulin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475208@2x.jpg'},   
+	{id: 'Sammy Blais', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478104@2x.jpg'},    
+	{id: 'Matt Murray', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476899@2x.jpg'},    
+	{id: 'Malcolm Subban', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476876@2x.jpg'},    
+	{id: 'Barclay Goodrow', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476624@2x.jpg'},    
+	{id: 'Brandon Saad', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476438@2x.jpg'},    
+	{id: 'Nils Hoglander', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481535@2x.jpg'},   
+	{id: 'Ilya Lyubushkin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480950@2x.jpg'},    
+	{id: 'Kristian Reichel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480443@2x.jpg'},    
+	{id: 'Alex Tuch', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477949@2x.jpg'},    
+	{id: 'Joel Armia', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476469@2x.jpg'},    
+	{id: 'Sam Carrick', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475842@2x.jpg'},   
+	{id: 'Max Jones', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479368@2x.jpg'},   
+	{id: 'Clayton Keller', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479343.jpg'},
+	{id: 'Mitchell Stephens', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478477@2x.jpg'},    
+	{id: 'William Nylander', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477939@2x.jpg'},    
+	{id: 'Kailer Yamamoto', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479977@2x.jpg'},    
+	{id: 'Braden Holtby', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474651.jpg'},
+	{id: 'Karson Kuhlman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480901@2x.jpg'},  
+	{id: 'Corey Schueneman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481461@2x.jpg'},    
+	{id: 'Quinn Hughes', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480800@2x.jpg'},    
+	{id: 'Drake Batherson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480208@2x.jpg'},    
+	{id: 'Carter Rowney', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477240@2x.jpg'},    
+	{id: 'Joe Snively', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481441@2x.jpg'},    
+	{id: 'Nicolas Meloche', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478467@2x.jpg'},    
+	{id: 'Dominik Simon', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478866@2x.jpg'},   
+	{id: 'Tyson Barrie', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475197@2x.jpg'},    
+	{id: 'Oskar Sundqvist', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476897@2x.jpg'},    
+	{id: 'Jamie Oleksiak', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476467@2x.jpg'},    
+	{id: 'Thomas Chabot', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478469@2x.jpg'},    
+	{id: 'Duncan Keith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470281@2x.jpg'},    
+	{id: 'Jake Christiansen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481161@2x.jpg'},    
+	{id: 'Josh Mahura', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479372@2x.jpg'},    
+	{id: 'Sean Kuraly', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476374@2x.jpg'},    
+	{id: 'Erik Johnson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473446.jpg'},
+	{id: 'Mikko Rantanen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478420.jpg'},
+	{id: 'Pat Maroon', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474034@2x.jpg'},   
+	{id: 'Nick Bonino', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474009@2x.jpg'},    
+	{id: 'Tobias Bjornfot', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481600@2x.jpg'},    
+	{id: 'Mike Reilly', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476422@2x.jpg'},    
+	{id: 'Antti Raanta', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477293@2x.jpg'},    
+	{id: 'Jacob Peterson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480216.jpg'},
+	{id: 'Brandon Tanev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479293@2x.jpg'},    
+	{id: 'Dean Kukan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478567@2x.jpg'},    
+	{id: 'Michael Bunting', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478047@2x.jpg'},    
+	{id: 'Thomas Greiss', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471306@2x.jpg'},    
+	{id: 'Vinnie Hinostroza', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476994@2x.jpg'},    
+	{id: 'Ryan Nugent-Hopkins', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476454@2x.jpg'},   
+	{id: 'Niko Mikkola', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478859@2x.jpg'},    
+	{id: 'Mike Hoffman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474884@2x.jpg'},    
+	{id: 'Evan Bouchard', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480803@2x.jpg'},    
+	{id: 'Cody Eakin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475236@2x.jpg'},    
+	{id: 'Dmitry Kulikov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475179.jpg'},
+	{id: 'Connor Dewar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480980.jpg'},
+	{id: 'Jake DeBrusk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478498@2x.jpg'},    
+	{id: 'Bo Horvat', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477500@2x.jpg'},    
+	{id: 'Erik Brannstorm', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480073@2x.jpg'},    
+	{id: 'Ondrej Kase', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478131@2x.jpg'},    
+	{id: 'Victor Olofsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478109@2x.jpg'},    
+	{id: 'Andreas Athanasiou', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476960@2x.jpg'},    
+	{id: 'Pavel Buchnevich', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477402@2x.jpg'},    
+	{id: 'Mark Borowiecki', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474697@2x.jpg'},    
+	{id: 'Juho Lammikko', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477996@2x.jpg'},    
+	{id: 'Jake Oettinger', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479979.jpg'},
+	{id: 'Denis Gurianov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478495.jpg'},
+	{id: 'Anthony Cirelli', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478519@2x.jpg'},    
+	{id: 'Marcus Foligno', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475220.jpg'},
+	{id: 'Oliver Wahlstrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480789@2x.jpg'},   
+	{id: 'Mikhail Sergachev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479410@2x.jpg'},  
+	{id: 'Claude Giroux', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473512@2x.jpg'},    
+	{id: 'Tomas Nosek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477931@2x.jpg'},    
+	{id: 'Evan Rodrigues', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478542@2x.jpg'},   
+	{id: 'Michael Raffl', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477290.jpg'},
+	{id: 'Artemi Panarin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478550@2x.jpg'},   
+	{id: 'Ethan Bear', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478451@2x.jpg'},    
+	{id: 'Zach Hyman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475786@2x.jpg'},   
+	{id: 'Brock Nelson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475754@2x.jpg'},    
+	{id: 'Christian Fischer', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478432.jpg'},
+	{id: 'Warren Foegele', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477998@2x.jpg'},  
+	{id: 'Ville Heinola', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481572@2x.jpg'},   
+	{id: 'Jacob Middleton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478136@2x.jpg'},   
+	{id: 'Givani Smith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479379@2x.jpg'}, 
+	{id: 'Justin Braun', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474027@2x.jpg'},  
+	{id: 'Mikael Granlund', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475798@2x.jpg'},    
+	{id: 'Samuel Girard', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479398.jpg'},
+	{id: 'Tyce Thompson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481740@2x.jpg'},    
+	{id: 'Gavin Bayreuther', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479945@2x.jpg'},   
+	{id: 'Vasily Podkolzin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481617@2x.jpg'},   
+	{id: 'MacKenzie Weegar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477346@2x.jpg'},  
+	{id: 'Alexander Romanov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481014@2x.jpg'},   
+	{id: 'Boris Katchouk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479383@2x.jpg'},   
+	{id: 'Mario Ferraro', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479983@2x.jpg'},    
+	{id: 'John Tavares', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475166@2x.jpg'},    
+	{id: 'Louis Domingue', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475839@2x.jpg'},    
+	{id: 'Dylan DeMelo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476331@2x.jpg'},   
+	{id: 'Quinton Byfield', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482124@2x.jpg'},    
+	{id: 'Jonas Brodin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476463.jpg'},
+	{id: 'Dustin Tokarski', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474682@2x.jpg'},   
+	{id: 'J. J. Moser', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482655.jpg'},
+	{id: 'Noah Gregor', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479393@2x.jpg'},    
+	{id: 'Nic Dowd', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475343@2x.jpg'},    
+	{id: 'Scott Reedy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480060@2x.jpg'},    
+	{id: 'Yakov Trenin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478508@2x.jpg'},    
+	{id: 'Paul Byron', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474038@2x.jpg'},    
+	{id: 'Jamie Drysdale', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482142@2x.jpg'},    
+	{id: 'Daniel Sprong', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478466@2x.jpg'},    
+	{id: 'Brock McGinn', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476934@2x.jpg'},    
+	{id: 'Jake Muzzin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474162@2x.jpg'},    
+	{id: 'Alex Nedeljkovic', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477968@2x.jpg'},    
+	{id: 'Michael Amadio', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478020@2x.jpg'},    
+	{id: 'Frank Vatrano', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478366@2x.jpg'},    
+	{id: 'Dylan Cozens', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481528@2x.jpg'},    
+	{id:'Calen Addison', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480884.jpg'},
+	{id: 'Andrew Mangiapane', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478233@2x.jpg'},    
+	{id: 'Patrick Kane', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474141.jpg'},
+	{id: 'Jaret Anderson-Dolan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479994@2x.jpg'},    
+	{id: 'Colton Sissons', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476925@2x.jpg'},    
+	{id: 'Timo Meier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478414@2x.jpg'},    
+	{id: 'Zach Aston-Reese', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479944@2x.jpg'},    
+	{id: 'Pierre-Olivier Joseph', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480058@2x.jpg'},    
+	{id: 'Conor Sheary', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477839@2x.jpg'},    
+	{id: 'Jonas Siegenthaler', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478399@2x.jpg'},    
+	{id: 'Darnell Nurse', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477498@2x.jpg'},    
+	{id: 'Max Comtois', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480031@2x.jpg'},    
+	{id: 'Zach Werenski', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478460@2x.jpg'},    
+	{id: 'Tyler Bertuzzi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477479@2x.jpg'},    
+	{id: 'Kieffer Bellows', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479356@2x.jpg'},    
+	{id: 'Klim Kostin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480011@2x.jpg'},    
+	{id: 'Alexander Kerfoot', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477021@2x.jpg'},    
+	{id: 'Rasmus Asplund', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479335@2x.jpg'},    
+	{id: 'Lawson Crouse', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478474.jpg'},
+	{id: 'Alex Formenton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480029@2x.jpg'},    
+	{id: 'Alex Iafallo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480113@2x.jpg'},    
+	{id: 'Axel Jonsson Fjallby', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479536@2x.jpg'},  
+	{id: 'Brendan Smith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474090@2x.jpg'},  
+	{id: 'Kyle Palmieri', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475151@2x.jpg'},    
+	{id: 'Alexandar Georgiev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480382@2x.jpg'},   
+	{id: 'Jack Campbell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475789@2x.jpg'},
+	{id: 'Josh Brown', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477384@2x.jpg'},     
+	{id: 'Damon Severson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476923@2x.jpg'},    
+	{id: 'Ryan Donato', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477987@2x.jpg'},    
+	{id: 'Anthony Angello', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478074@2x.jpg'},    
+	{id: 'Jake McCabe', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476931.jpg'},
+	{id: 'Jordan Kyrou', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479385@2x.jpg'},    
+	{id: 'Matt Grzelcyk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476891@2x.jpg'},    
+	{id: 'Casey Desmith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479193@2x.jpg'},  
+	{id: 'Max Domi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477503@2x.jpg'},    
+	{id: 'Roman Josi', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474600@2x.jpg'},    
+	{id: 'Isac Lundestrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480806@2x.jpg'},    
+	{id: 'Riley Sheahan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475772@2x.jpg'},    
+	{id: 'Aaron Ekblad', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477932@2x.jpg'},    
+	{id: 'Valeri Nichushkin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477501.jpg'},
+	{id: 'Chris Tierney', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476919@2x.jpg'},    
+	{id: 'Matt Luff', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479644@2x.jpg'},    
+	{id: 'Nico Hischier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480002@2x.jpg'},   
+	{id: 'Charlie McAvoy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479325@2x.jpg'},    
+	{id: 'Ivan Provorov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478500@2x.jpg'},   
+	{id: 'Matt Boldy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481557.jpg'},
+	{id: 'Greg McKegg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475735@2x.jpg'},    
+	{id: 'Carl Grundstrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479336@2x.jpg'},    
+	{id: 'Justin Barron', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482111.jpg'},
+	{id: 'Colin Blackwell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476278@2x.jpg'},    
+	{id: 'Vladislav Kolychonok', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481609.jpg'},
+	{id: 'Ben Harpur', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477433@2x.jpg'},    
+	{id: 'Jakob Silfverberg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475164@2x.jpg'},    
+	{id: 'Conor Timmins', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479982.jpg'},
+	{id: 'Zach Bogosian', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474567@2x.jpg'},    
+	{id: 'Brett Pesce', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477488@2x.jpg'},    
+	{id: 'P.K. Subban', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474056@2x.jpg'},    
+	{id: 'Christian Jaros', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478868@2x.jpg'},    
+	{id: 'Nick Ritchie', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477941.jpg'},
+	{id: 'Stefan Matteau', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476870.jpg'},
+	{id: 'Marcus Pettersson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477969@2x.jpg'},   
+	{id: 'Tom Wilson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476880@2x.jpg'},    
+	{id: 'Kyle Burroughs', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477335@2x.jpg'},    
+	{id: 'Mark Scheifele', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476460@2x.jpg'},   
+	{id: 'Mattias Samuelsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480807@2x.jpg'},    
+	{id: 'Vladislav Namestnikov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476480@2x.jpg'},   
+	{id: 'Jimmy Vesey', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476918@2x.jpg'},    
+	{id: 'Ben Chiarot', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475279@2x.jpg'},    
+	{id: 'Frederick Gaudreau', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477919.jpg'},
+	{id: 'Matthew Highmore', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478146@2x.jpg'},   
+	{id: 'Oskar Lindblom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478067@2x.jpg'},    
+	{id: 'Ilya Samsonov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478492@2x.jpg'},   
+	{id: 'Tim Gettinger', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479364@2x.jpg'},   
+	{id: 'Scott Wedgewood', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475809.jpg'},    
+	{id: 'Bryan Rust', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475810@2x.jpg'},    
+	{id: 'Johnny Gaudreau', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476346@2x.jpg'},    
+	{id: 'Marc-Edouard Vlasic', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471709@2x.jpg'},    
+	{id: 'Haydn Fleury', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477938@2x.jpg'},    
+	{id: 'Ryan Merkley', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480847@2x.jpg'},   
+	{id: 'Andrej Sekera', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471284.jpg'},    
+	{id: 'Braden Schneider', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482073@2x.jpg'},   
+	{id: 'Jeremy Lauzon', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478468@2x.jpg'},   
+	{id: 'Logan Stanley', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479378@2x.jpg'},    
+	{id: 'Filip Chytil', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480078@2x.jpg'},   
+	{id: 'Mason Appleton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478891@2x.jpg'},    
+	{id: 'Phillip Danault', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476479@2x.jpg'},    
+	{id: 'Mathieu Perreault', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473618@2x.jpg'},    
+	{id: 'Kirill Kaprizov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478864.jpg'},
+	{id: 'Alex Chiasson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475163@2x.jpg'},    
+	{id: 'Brad Marchand', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473419@2x.jpg'},    
+	{id: 'Yanni Gourde', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476399@2x.jpg'},    
+	{id: 'Ryan Hartman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477451.jpg'},
+	{id: 'Patric Hornqvist', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471887@2x.jpg'},   
+	{id: 'Marian Studenic', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480226.jpg'},
+	{id: 'Joonas Korpisalo', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476914@2x.jpg'},    
+	{id: 'Adam Boqvist', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480871@2x.jpg'},    
+	{id: 'Jaroslav Halak', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470860@2x.jpg'},    
+	{id: 'Adam Ruzicka', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480008@2x.jpg'},    
+	{id: 'Brayden Schenn', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475170@2x.jpg'},    
+	{id: 'Jake Evans', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478133@2x.jpg'},    
+	{id: 'Mark Giordano', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470966@2x.jpg'},    
+	{id: 'Dmitrij Jaskin', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476436.jpg'},
+	{id: 'Nick Leddy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475181@2x.jpg'},    
+	{id: 'Philippe Myers', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479026@2x.jpg'},    
+	{id: 'Brendan Gallagher', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475848@2x.jpg'},    
+	{id: 'Connor Murphy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476473.jpg'},
+	{id: 'Dakota Joshua', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478057@2x.jpg'},    
+	{id: 'Noah Dobson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480865@2x.jpg'},    
+	{id: 'Justin Schultz', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474602@2x.jpg'},    
+	{id: 'Tanner Jeannot', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479661@2x.jpg'},    
+	{id: 'Nikita Zaitsev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479458@2x.jpg'},    
+	{id: 'Evgeny Svechnikov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478431@2x.jpg'},    
+	{id: 'Nathan Bastian', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479414@2x.jpg'},    
+	{id: 'Sam Lafferty', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478043.jpg'},
+	{id: 'Colin White', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478400@2x.jpg'},
+	{id: 'Zach Parise', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470610@2x.jpg'},    
+	{id: 'Tucker Poolman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477359@2x.jpg'},    
+	{id: 'Calle Jarnkrok', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475714@2x.jpg'},    
+	{id: 'Justin Holl', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475718@2x.jpg'},    
+	{id: 'Kyle Clifford', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475160@2x.jpg'},    
+	{id: 'Joe Pavelski', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470794.jpg'},
+	{id: 'Tomas Tatar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475193@2x.jpg'},    
+	{id: 'Nikita Zadorov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477507@2x.jpg'},    
+	{id: 'Casey Mittelstadt', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479999@2x.jpg'},    
+	{id: 'Calvin De Haan', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475177.jpg'},
+	{id: 'Devin Shore', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476913@2x.jpg'},    
+	{id: 'Andrew Peeke', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479369@2x.jpg'},    
+	{id: 'Daniel Walcott', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478069@2x.jpg'},    
+	{id: 'Mikhail Maltsev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479573.jpg'},
+	{id: 'Brayden Point', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478010@2x.jpg'},    
+	{id: 'Adam Erne', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477454@2x.jpg'},   
+	{id: 'Trevor Moore', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479675@2x.jpg'},    
+	{id: 'Matt Duchene', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475168@2x.jpg'},    
+	{id: 'Zack MacEwen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479772@2x.jpg'},   
+	{id: 'Joel Hanley', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477810.jpg'},
+	{id: 'Tyler Benson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479347@2x.jpg'},    
+	{id: 'Jeff Petry', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473507@2x.jpg'},    
+	{id: 'Vladislav Gavrikov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478882@2x.jpg'},   
+	{id: 'Brian Elliott', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8470880@2x.jpg'},    
+	{id: 'Markus Nutivaara', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478906@2x.jpg'},   
+	{id: 'Fredrik Claesson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476368@2x.jpg'},    
+	{id: 'Vitek Vanecek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477970@2x.jpg'},    
+	{id: 'Julien Gauthier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479328@2x.jpg'},    
+	{id: 'Ryan Ellis', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475176@2x.jpg'},    
+	{id: 'Mathew Barzal', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478445@2x.jpg'},    
+	{id: 'Antoine Roussel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474849.jpg'},
+	{id: 'Anze Kopitar', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471685@2x.jpg'},    
+	{id: 'Nick Paul', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477426@2x.jpg'},    
+	{id: 'Luke Glendening', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476822.jpg'},
+	{id: 'Craig Anderson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8467950@2x.jpg'},   
+	{id: 'Nicholas Robertson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481582@2x.jpg'},    
+	{id: 'Michael Pezzetta', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479543@2x.jpg'},    
+	{id: 'Andrew Ladd', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471217.jpg'},
+	{id: 'Cayden Primeau', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480051@2x.jpg'},    
+	{id: 'Garnet Hathaway', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477903@2x.jpg'},    
+	{id: 'Sam Montembeault', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478470@2x.jpg'},    
+	{id: 'Adam Pelech', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476917@2x.jpg'},    
+	{id: 'Ian Cole', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474013@2x.jpg'},    
+	{id: 'Jack Johnson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471677.jpg'},
+	{id: 'Peyton Krebs', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481522@2x.jpg'},    
+	{id: 'Jesper Fast', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475855@2x.jpg'},    
+	{id: 'Elvis Merzlikins', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478007@2x.jpg'},    
+	{id: 'Sam Reinhart', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477933@2x.jpg'},    
+	{id: 'Jake Guentzel', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477404@2x.jpg'},   
+	{id: 'Henrik Borgstrom', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479404.jpg'},
+	{id: 'Robby Fabbri', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477952@2x.jpg'},    
+	{id: 'Adam Lowry', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476392@2x.jpg'},    
+	{id: 'Henri Jokiharju', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480035@2x.jpg'},    
+	{id: 'Eric Robinson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480762@2x.jpg'},    
+	{id: 'Travis Dermott', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478408@2x.jpg'},    
+	{id: 'Santeri Hatakka', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481701@2x.jpg'},    
+	{id: 'Brad Malone', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474089@2x.jpg'},    
+	{id: 'Neal Pionk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480145@2x.jpg'},    
+	{id: 'Jason Spezza', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8469455@2x.jpg'},   
+	{id: 'Barrett Hayton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480849.jpg'},
+	{id: 'Travis Konecny', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478439@2x.jpg'},    
+	{id: 'Oliver Kylington', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478430@2x.jpg'},
+	{id: 'Ross Johnston', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477527@2x.jpg'},   
+	{id: 'Adin Hill', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478499@2x.jpg'},    
+	{id: 'Hampus Lindholm', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476854@2x.jpg'},    
+	{id: 'Cal Foote', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479984@2x.jpg'},    
+	{id: 'Ryan Poehling', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8480068@2x.jpg'},   
+	{id: 'Kris Letang', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471724@2x.jpg'},    
+	{id: 'Erik Gustafsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476979.jpg'},
+	{id: 'Marco Scandella', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474618@2x.jpg'}, 
+	{id: 'Mika Zibanejad', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476459@2x.jpg'},      
+	{id: 'Kevin Hayes', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475763@2x.jpg'},    
+	{id: 'Mark Friedman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478017@2x.jpg'},    
+	{id: 'Nick Holden', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474207@2x.jpg'},    
+	{id: 'Simon Benoit', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481122@2x.jpg'},    
+	{id: 'Trent Frederic', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479365@2x.jpg'},    
+	{id:'Nazem Kadri', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475172.jpg'},
+	{id:'Mats Zaccarello', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475692.jpg'},
+	{id: 'Ben Hutton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477018@2x.jpg'},    
+	{id: 'Mason Marchment', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478975@2x.jpg'},    
+	{id: 'Jared Spurgeon', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474716.jpg'},
+	{id: 'Jonathan Dahlen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479373@2x.jpg'},    
+	{id: 'Shea Theodore', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477447@2x.jpg'},  
+	{id: 'Patrik Nemeth', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475747@2x.jpg'},    
+	{id: 'Arthur Kaliyev', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481560@2x.jpg'},    
+	{id: 'Derek Forbort', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475762@2x.jpg'},    
+	{id: 'Adrian Kempe', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477960@2x.jpg'},   
+	{id: 'Alex Galchenyuk', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476851.jpg'},
+	{id: 'Nino Niederreiter', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475799@2x.jpg'},    
+	{id: 'Anthony Duclair', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477407@2x.jpg'},    
+	{id: 'Jansen Harkins', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478424@2x.jpg'},    
+	{id: 'Connor Clifton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477365@2x.jpg'},    
+	{id: 'Kasperi Kapanen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477953@2x.jpg'},    
+	{id: 'Anton Blidh', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477320@2x.jpg'},    
+	{id: 'Elias Lindholm', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477496@2x.jpg'},   
+	{id: 'Sean Couturier', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476461@2x.jpg'},    
+	{id: 'Scott Laughton', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476872@2x.jpg'},   
+	{id: 'Carson Soucy', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477369@2x.jpg'},   
+	{id: 'Robert Hagg', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477462@2x.jpg'},   
+	{id: 'Charlie Coyle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475745@2x.jpg'},    
+	{id: 'Sonny Milano', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477947@2x.jpg'},    
+	{id: 'Reese Johnson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481147.jpg'},
+	{id: 'Brandon Duhaime', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479520.jpg'},
+	{id: 'Juuse Saros', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477424@2x.jpg'},    
+	{id: 'Kyle Connor', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478398@2x.jpg'},    
+	{id: 'Libor Hajek', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479333@2x.jpg'},    
+	{id: 'John Marino', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478507@2x.jpg'},   
+	{id: 'Erik Karlsson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474578@2x.jpg'},    
+	{id: 'Alexander Radulov', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471228.jpg'},
+	{id: 'Brendan Guhle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478425@2x.jpg'},    
+	{id: 'Dylan Gambrell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479580@2x.jpg'},    
+	{id: 'Jaycob Megna', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477034@2x.jpg'},    
+	{id: 'Kris Russell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471729@2x.jpg'},    
+	{id: 'Mason Geertsen', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477419@2x.jpg'},    
+	{id: 'Anton Lundell', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482113@2x.jpg'},   
+	{id: 'Michal Kempny', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479482@2x.jpg'},    
+	{id: 'Adam Henrique', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474641@2x.jpg'},    
+	{id: 'Ondrej Palat', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476292@2x.jpg'},    
+	{id: 'Brendan Gaunce', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476867@2x.jpg'},   
+	{id: 'Nick Seeler', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476372@2x.jpg'},            
+	{id: 'Cam Talbot', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475660.jpg'},
+	{id: 'Reilly Smith', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475191@2x.jpg'},    
+	{id: 'Shane Pinto', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481596@2x.jpg'},    
+	{id: 'Tim Stüzle', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482116@2x.jpg'},    
+	{id: 'Vladimir Tarasenko', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475765@2x.jpg'},    
+	{id: 'Ryan Reaves', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471817@2x.jpg'},    
+	{id: 'Connor McMichael', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8481580@2x.jpg'},    
+	{id: 'Alexander Edler', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471303@2x.jpg'},    
+	{id: 'Matias Maccelli', image: 	'https://dobberprospects.com/wp-content/uploads/2019/06/Matias-Maccelli-1-300x300.jpg'},
+	{id: 'Cole Perfetti', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8482149@2x.jpg'},    
+	{id: 'Linus Ullmark', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476999@2x.jpg'},    
+	{id: 'Jacob Trouba', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476885@2x.jpg'},  
+	{id: 'Drake Caggiula', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8479465@2x.jpg'},   
+	{id: 'Joel Edmundson', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476441@2x.jpg'},    
+	{id: 'Jordan Staal', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8473533@2x.jpg'},    
+	{id: 'Chris Wideman', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475227@2x.jpg'},    
+	{id: 'Matt Nieto', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8476442@2x.jpg'},    
+	{id: 'Darren Helm', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8471794.jpg'},
+	{id: 'Taylor Hall', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8475791@2x.jpg'},   
+	{id: 'Dryden Hunt', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478211@2x.jpg'},    
+	{id: 'Kevin Fiala', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477942.jpg'},
+	{id: 'Derek Grant', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8474683@2x.jpg'},    
+	{id: 'Dominik Kubalik', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8477330.jpg'},
+	{id: 'Pavel Zacha', image: 	'https://cms.nhl.bamgrid.com/images/headshots/current/168x168/8478401@2x.jpg'}
+];
+
+var myPicker = new picker.Picker({
+    items: items
+});
+
+var pickerUI = new PickerUI(myPicker, {
+    elements: {
+        pick: "#pick",
+        pass: "#pass",
+        undo: "#undo",
+        redo: "#redo",
+        evaluating: "#evaluating",
+        favorites: "#favorites"
+    }
+});
+
+pickerUI.initialize();
+
+/* Sortable favorites - you can safely remove this, and the Sortable.min.js script, if you don't want to be able to sort your favorite list. */
+var sortable = new Sortable(pickerUI.elem.favorites.get(0), {
+    draggable: '.item',
+    animation: 100,
+    onStart: function() {
+        pickerUI.elem.favorites.addClass("sorting");
+    },
+    onEnd: function() {
+        pickerUI.elem.favorites.removeClass("sorting");
+    },
+    onUpdate: function() {
+        myPicker.setFavorites(pickerUI.elem.favorites.children().map(function() {
+            return pickerUI.getItem(this);
+        }).get());
+        pickerUI.update(true);
+    }
+});
+/* End sortable favorites */
+</script>
+<p>with immense gratitude to rae <a href="http://timbitshockey.tumblr.com">@timbitshockey</a>. code is from the pokemon picker <a href="https://github.com/antialiasis/favorite-picker">here on github.</a> </p>
+</body>
+</html>
